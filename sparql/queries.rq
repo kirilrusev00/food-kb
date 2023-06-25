@@ -1,0 +1,213 @@
+# Query 1
+
+# Get foods that have banana and don't have walnut in them
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX wtm: <http://purl.org/heals/food/>
+PREFIX ind: <http://purl.org/heals/ingredient/>
+SELECT DISTINCT ?recipe
+WHERE {
+    {
+        ?recipe wtm:hasIngredient ind:Banana .
+    }
+    MINUS 
+    {
+    	?recipe wtm:hasIngredient ind:Walnut .
+    }
+}
+
+# Query 1 - Variant 2
+#SELECT DISTINCT ?recipe
+#WHERE {
+#    ?recipe wtm:hasIngredient ind:Banana .
+#    FILTER NOT EXISTS {
+#    	?recipe wtm:hasIngredient ind:Walnut .
+#    }
+#}
+
+# Query 2
+
+# Get foods with most ingredients
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX wtm: <http://purl.org/heals/food/>
+SELECT ?recipe (COUNT(DISTINCT ?ingredient) as ?num_ingredients) 
+WHERE { 
+	?recipe wtm:hasIngredient ?ingredient .
+} 
+GROUP BY ?recipe 
+ORDER BY DESC(?num_ingredients)
+
+# Query 3
+
+# Get foods that "user15" dislikes
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX wtm: <http://purl.org/heals/food/>
+SELECT ?recipeLabel ?ingredientLabel
+WHERE {
+    ?recipe wtm:hasIngredient ?ingredient .
+    {
+        ?user rdf:type wtm:User .
+        ?user rdfs:label "user 15" .
+        ?user wtm:dislikes ?ingredient .
+    }
+    
+    ?ingredient rdfs:label ?ingredientLabel . 
+    ?recipe rdfs:label ?recipeLabel .
+}
+
+# Query 4
+
+# Categorize cooking time
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX wtm: <http://purl.org/heals/food/>
+SELECT ?recipeLabel ?cooking_time_category
+WHERE {
+    ?recipe wtm:hasCookTime ?cooking_time .
+    BIND(IF(?cooking_time <= 30, "Fast",
+            IF(?cooking_time > 60, "Slow", "Average")) AS ?cooking_time_category) .
+    
+    ?recipe rdfs:label ?recipeLabel . 
+}
+
+# Query 5
+
+# Symmetric property
+PREFIX wtm: <http://purl.org/heals/food/>
+SELECT ?ingredient ?ingr_1 where { 
+	?ingr_1 wtm:substitutesFor ?ingredient .
+}
+
+# Query 6
+
+# Get ingredients that have crunchy texture or the texture is not speciied
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX wtm: <http://purl.org/heals/food/>
+PREFIX ind: <http://purl.org/heals/ingredient/>
+SELECT ?ingredient ?texture {
+    ?ingredient rdf:type wtm:Ingredient .
+    OPTIONAL {
+    	?ingredient wtm:hasTexture ?texture .
+        FILTER(?texture = ind:Crunchy) .
+    }
+}
+
+# Query 7
+
+# Get foods that are snacks, side courses or both 
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX wtm: <http://purl.org/heals/food/>
+SELECT ?recipe {
+    {
+        ?recipe wtm:isRecommendedForMeal wtm:Snack.
+    }
+    UNION
+    {
+        ?recipe wtm:isRecommendedForCourse wtm:Side.
+    }
+}
+
+# Query 8
+
+# Categorize glycemic index
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX wtm: <http://purl.org/heals/food/>
+SELECT ?ingredientLabel ?glycemic_index_category
+WHERE {
+    ?ingredient wtm:hasGlycemicIndex ?glycemic_index .
+    BIND(IF(?glycemic_index <= 55, "Low",
+            IF(?glycemic_index >= 70, "High", "Medium")) AS ?glycemic_index_category) .
+    
+    ?ingredient rdfs:label ?ingredientLabel . 
+}
+
+# Query 9
+
+# Get foods that have more than 4 serves
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX wtm: <http://purl.org/heals/food/>
+SELECT DISTINCT ?recipe ?serves
+WHERE {
+    ?recipe wtm:serves ?serves .
+    FILTER(?serves > 4).
+}
+
+# Query 10
+
+# Get average cook time (rounded to the second digit ater decimal point) of foods grouped by course type
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX wtm: <http://purl.org/heals/food/>
+SELECT ?type_code (ROUND(AVG(?cook_time)*100)/100 as ?avg_cook_time) WHERE { 
+	VALUES (?type ?type_code) {
+        (wtm:Salad "SALAD")
+        (wtm:Soup "SOUP")
+        (wtm:Appetizer "APPETIZER")
+        (wtm:Entree "ENTREE")
+        (wtm:Side "SIDE")
+        (wtm:Dessert "DESSERT")
+  	}
+    ?recipe rdf:type wtm:Recipe .
+	  ?recipe wtm:hasCookTime ?cook_time .
+    ?recipe wtm:isRecommendedForCourse ?type .
+} 
+GROUP BY ?type_code
+ORDER BY ?avg_cook_time
+
+# Query 11
+
+# Get foods that can be eaten before dinner
+PREFIX wtm: <http://purl.org/heals/food/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+SELECT ?recipe ?meal WHERE { 
+    ?recipe wtm:isRecommendedForMeal ?meal .
+    ?meal wtm:isEatenBefore wtm:Dinner .
+}
+
+# Query 12
+
+# Get all foods that have salt in them
+PREFIX wtm: <http://purl.org/heals/food/>
+PREFIX ind: <http://purl.org/heals/ingredient/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?recipeLabel WHERE { 
+    ind:Salt wtm:isIngredientIn ?recipe .
+    ?recipe rdfs:label ?recipeLabel .
+}
+
+# Query 13
+
+# Get all foods that are recommended or snack and breakfast and or dessert
+PREFIX wtm: <http://purl.org/heals/food/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?recipeLabel WHERE {
+    {
+        ?recipe wtm:isRecommendedForMeal wtm:Snack
+    }
+    .
+    {
+        ?recipe wtm:isRecommendedForMeal wtm:Breakfast
+    }
+    ?recipe wtm:isRecommendedForCourse ?course .
+    
+    FILTER(?course = wtm:Dessert)
+    
+    ?recipe rdfs:label ?recipeLabel .
+}
+
+# Query 14
+
+# Get all foods that have chicken in them and all ingredients have low glycemic index
+PREFIX wtm: <http://purl.org/heals/food/>
+PREFIX ind: <http://purl.org/heals/ingredient/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?recipeLabel (MAX(?glycemic_index) as ?max_glycemic_index) WHERE {
+    ?recipe wtm:hasIngredient ind:Chicken .
+    ?recipe wtm:hasIngredient ?ingredient .
+    ?ingredient wtm:hasGlycemicIndex ?glycemic_index .
+    
+    ?recipe rdfs:label ?recipeLabel .
+}
+GROUP BY ?recipeLabel
+HAVING (?max_glycemic_index <= 55)
